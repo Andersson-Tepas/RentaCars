@@ -1,17 +1,22 @@
 package PresentacionSwing;
 
-import AccesoDatos.Conexion;
+import AccesoDatos.ReservaDAO;
+import Entidades.Reserva;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.sql.*;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
 
 public class ReservaForm extends JFrame {
     private JTextField txtId, txtIdCliente, txtIdCoche, txtFechaInicio, txtFechaFin, txtEstado;
     private JButton btnGuardar, btnEditar, btnEliminar;
     private JTable tabla;
     private DefaultTableModel modelo;
+    private ReservaDAO reservaDAO = new ReservaDAO();
 
     public ReservaForm() {
         setTitle("Gestión de Reservas");
@@ -83,33 +88,90 @@ public class ReservaForm extends JFrame {
         scroll.setBounds(20, 260, 740, 100);
         add(scroll);
 
-        // Cargar reservas reales desde la base
-        cargarReservas();
+        // Evento de selección de tabla
+        tabla.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+            public void valueChanged(ListSelectionEvent e) {
+                if (!e.getValueIsAdjusting() && tabla.getSelectedRow() != -1) {
+                    int fila = tabla.getSelectedRow();
+                    txtId.setText(tabla.getValueAt(fila, 0).toString());
+                    txtIdCliente.setText(tabla.getValueAt(fila, 1).toString());
+                    txtIdCoche.setText(tabla.getValueAt(fila, 2).toString());
+                    txtFechaInicio.setText(tabla.getValueAt(fila, 3).toString());
+                    txtFechaFin.setText(tabla.getValueAt(fila, 4).toString());
+                    txtEstado.setText(tabla.getValueAt(fila, 5).toString());
+                }
+            }
+        });
 
+        // Botones
+        btnGuardar.addActionListener(e -> {
+            try {
+                Reserva r = new Reserva(
+                        0,
+                        Integer.parseInt(txtIdCliente.getText()),
+                        Integer.parseInt(txtIdCoche.getText()),
+                        Date.valueOf(txtFechaInicio.getText()),
+                        Date.valueOf(txtFechaFin.getText()),
+                        Integer.parseInt(txtEstado.getText())
+                );
+                if (reservaDAO.guardar(r)) {
+                    JOptionPane.showMessageDialog(this, "Reserva guardada.");
+                    cargarReservas();
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error al guardar: " + ex.getMessage());
+            }
+        });
+
+        btnEditar.addActionListener(e -> {
+            try {
+                Reserva r = new Reserva(
+                        Integer.parseInt(txtId.getText()),
+                        Integer.parseInt(txtIdCliente.getText()),
+                        Integer.parseInt(txtIdCoche.getText()),
+                        Date.valueOf(txtFechaInicio.getText()),
+                        Date.valueOf(txtFechaFin.getText()),
+                        Integer.parseInt(txtEstado.getText())
+                );
+                if (reservaDAO.editar(r)) {
+                    JOptionPane.showMessageDialog(this, "Reserva actualizada.");
+                    cargarReservas();
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error al actualizar: " + ex.getMessage());
+            }
+        });
+
+        btnEliminar.addActionListener(e -> {
+            try {
+                int id = Integer.parseInt(txtId.getText());
+                int confirm = JOptionPane.showConfirmDialog(this, "¿Deseas eliminar la reserva?", "Confirmar", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    if (reservaDAO.eliminar(id)) {
+                        JOptionPane.showMessageDialog(this, "Reserva eliminada.");
+                        cargarReservas();
+                    }
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error al eliminar: " + ex.getMessage());
+            }
+        });
+
+        cargarReservas();
         setVisible(true);
     }
 
     private void cargarReservas() {
-        modelo.setRowCount(0); // Limpiar tabla
-
-        try (Connection con = Conexion.getConnection()) {
-            String sql = "SELECT * FROM Reserva";
-            PreparedStatement ps = con.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                int id = rs.getInt("IdReserva");
-                int idCliente = rs.getInt("IdCliente");
-                int idCoche = rs.getInt("IdCoche");
-                Date fechaInicio = rs.getDate("FechaInicio");
-                Date fechaFin = rs.getDate("FechaFin");
-                int estado = rs.getInt("Estado");
-
-                modelo.addRow(new Object[]{id, idCliente, idCoche, fechaInicio, fechaFin, estado});
-            }
-
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Error al cargar reservas: " + e.getMessage());
+        modelo.setRowCount(0);
+        for (Reserva r : reservaDAO.listar()) {
+            modelo.addRow(new Object[]{
+                    r.getIdReserva(),
+                    r.getIdCliente(),
+                    r.getIdCoche(),
+                    r.getFechaInicio(),
+                    r.getFechaFin(),
+                    r.getEstado()
+            });
         }
     }
 }

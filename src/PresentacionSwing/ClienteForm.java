@@ -1,6 +1,8 @@
 package PresentacionSwing;
 
+import AccesoDatos.ClienteDAO;
 import AccesoDatos.Conexion;
+import Entidades.Cliente;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
@@ -14,6 +16,7 @@ public class ClienteForm extends JFrame {
     private JButton btnGuardar, btnEditar, btnEliminar;
     private JTable tabla;
     private DefaultTableModel modelo;
+    private ClienteDAO clienteDAO = new ClienteDAO();
 
     public ClienteForm() {
         setTitle("Gestión de Clientes");
@@ -90,7 +93,73 @@ public class ClienteForm extends JFrame {
         scroll.setBounds(20, 300, 740, 100);
         add(scroll);
 
-        cargarClientes();
+        // Eventos de los botones
+        btnGuardar.addActionListener(e -> {
+            try {
+                Cliente c = new Cliente(
+                        0,
+                        txtNombre.getText(),
+                        txtCorreo.getText(),
+                        txtTelefono.getText(),
+                        txtDUI.getText(),
+                        txtDireccion.getText(),
+                        Integer.parseInt(txtIdUsuario.getText())
+                );
+
+                if (clienteDAO.guardar(c)) {
+                    JOptionPane.showMessageDialog(this, "Cliente guardado correctamente");
+                    cargarClientes();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Error al guardar cliente");
+                }
+
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Datos inválidos: " + ex.getMessage());
+            }
+        });
+
+        btnEditar.addActionListener(e -> {
+            try {
+                Cliente c = new Cliente(
+                        Integer.parseInt(txtId.getText()),
+                        txtNombre.getText(),
+                        txtCorreo.getText(),
+                        txtTelefono.getText(),
+                        txtDUI.getText(),
+                        txtDireccion.getText(),
+                        Integer.parseInt(txtIdUsuario.getText())
+                );
+
+                if (clienteDAO.editar(c)) {
+                    JOptionPane.showMessageDialog(this, "Cliente actualizado correctamente");
+                    cargarClientes();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Error al actualizar cliente");
+                }
+
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Datos inválidos: " + ex.getMessage());
+            }
+        });
+
+        btnEliminar.addActionListener(e -> {
+            try {
+                int id = Integer.parseInt(txtId.getText());
+
+                int confirm = JOptionPane.showConfirmDialog(this, "¿Estás seguro de eliminar?", "Confirmar", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    if (clienteDAO.eliminar(id)) {
+                        JOptionPane.showMessageDialog(this, "Cliente eliminado correctamente");
+                        cargarClientes();
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Error al eliminar cliente");
+                    }
+                }
+
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "ID inválido: " + ex.getMessage());
+            }
+        });
 
         // Mostrar datos al seleccionar una fila
         tabla.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
@@ -108,31 +177,22 @@ public class ClienteForm extends JFrame {
             }
         });
 
+        cargarClientes();
         setVisible(true);
     }
 
     private void cargarClientes() {
         modelo.setRowCount(0); // Limpiar tabla
-
-        try (Connection con = Conexion.getConnection()) {
-            String sql = "SELECT * FROM Cliente";
-            PreparedStatement ps = con.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                modelo.addRow(new Object[]{
-                        rs.getInt("IdCliente"),
-                        rs.getString("Nombre"),
-                        rs.getString("Correo"),
-                        rs.getString("Telefono"),
-                        rs.getString("DUI"),
-                        rs.getString("Direccion"),
-                        rs.getInt("IdUsuario")
-                });
-            }
-
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Error al cargar clientes: " + e.getMessage());
+        for (Cliente c : clienteDAO.listar()) {
+            modelo.addRow(new Object[]{
+                    c.getIdCliente(),
+                    c.getNombre(),
+                    c.getCorreo(),
+                    c.getTelefono(),
+                    c.getDUI(),
+                    c.getDireccion(),
+                    c.getIdUsuario()
+            });
         }
     }
 }

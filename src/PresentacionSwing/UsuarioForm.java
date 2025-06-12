@@ -1,17 +1,20 @@
 package PresentacionSwing;
 
-import AccesoDatos.Conexion;
+import AccesoDatos.UsuarioDAO;
+import Entidades.Usuario;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.sql.*;
 
 public class UsuarioForm extends JFrame {
     private JTextField txtId, txtNombre, txtCorreo, txtContrasena, txtEstado;
     private JButton btnGuardar, btnEditar, btnEliminar;
     private JTable tabla;
     private DefaultTableModel modelo;
+    private UsuarioDAO usuarioDAO = new UsuarioDAO();
 
     public UsuarioForm() {
         setTitle("Gestión de Usuarios");
@@ -74,32 +77,90 @@ public class UsuarioForm extends JFrame {
         scroll.setBounds(20, 220, 650, 120);
         add(scroll);
 
-        // Cargar registros al iniciar
-        cargarUsuarios();
+        // Eventos
+        btnGuardar.addActionListener(e -> {
+            try {
+                Usuario u = new Usuario(0,
+                        txtNombre.getText(),
+                        txtContrasena.getText(),
+                        txtCorreo.getText(),
+                        Integer.parseInt(txtEstado.getText())
+                );
+                if (usuarioDAO.guardar(u)) {
+                    JOptionPane.showMessageDialog(this, "Usuario guardado exitosamente.");
+                    cargarUsuarios();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Error al guardar.");
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Datos inválidos.");
+            }
+        });
 
+        btnEditar.addActionListener(e -> {
+            try {
+                Usuario u = new Usuario(
+                        Integer.parseInt(txtId.getText()),
+                        txtNombre.getText(),
+                        txtContrasena.getText(),
+                        txtCorreo.getText(),
+                        Integer.parseInt(txtEstado.getText())
+                );
+                if (usuarioDAO.editar(u)) {
+                    JOptionPane.showMessageDialog(this, "Usuario actualizado.");
+                    cargarUsuarios();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Error al actualizar.");
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Datos inválidos.");
+            }
+        });
+
+        btnEliminar.addActionListener(e -> {
+            try {
+                int id = Integer.parseInt(txtId.getText());
+                int confirm = JOptionPane.showConfirmDialog(this, "¿Deseas eliminar este usuario?", "Confirmar", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    if (usuarioDAO.eliminar(id)) {
+                        JOptionPane.showMessageDialog(this, "Usuario eliminado.");
+                        cargarUsuarios();
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Error al eliminar.");
+                    }
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "ID inválido.");
+            }
+        });
+
+        tabla.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+            public void valueChanged(ListSelectionEvent e) {
+                if (!e.getValueIsAdjusting() && tabla.getSelectedRow() != -1) {
+                    int fila = tabla.getSelectedRow();
+                    txtId.setText(tabla.getValueAt(fila, 0).toString());
+                    txtNombre.setText(tabla.getValueAt(fila, 1).toString());
+                    txtCorreo.setText(tabla.getValueAt(fila, 2).toString());
+                    txtContrasena.setText(tabla.getValueAt(fila, 3).toString());
+                    txtEstado.setText(tabla.getValueAt(fila, 4).toString());
+                }
+            }
+        });
+
+        cargarUsuarios();
         setVisible(true);
     }
 
     private void cargarUsuarios() {
-        modelo.setRowCount(0); // Limpiar tabla
-
-        try (Connection con = Conexion.getConnection()) {
-            String sql = "SELECT * FROM Usuarios";
-            PreparedStatement ps = con.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                int id = rs.getInt("IdUsuario");
-                String nombre = rs.getString("Nombre");
-                String correo = rs.getString("Correo");
-                String contrasena = rs.getString("ContrasenaHash");
-                int estado = rs.getInt("Estado");
-
-                modelo.addRow(new Object[]{id, nombre, correo, contrasena, estado});
-            }
-
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Error al cargar usuarios: " + e.getMessage());
+        modelo.setRowCount(0);
+        for (Usuario u : usuarioDAO.listar()) {
+            modelo.addRow(new Object[]{
+                    u.getIdUsuario(),
+                    u.getNombre(),
+                    u.getCorreo(),
+                    u.getContrasenaHash(),
+                    u.getEstado()
+            });
         }
     }
 }

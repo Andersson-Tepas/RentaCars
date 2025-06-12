@@ -1,19 +1,20 @@
 package PresentacionSwing;
 
-import AccesoDatos.Conexion;
+import AccesoDatos.CocheDAO;
+import Entidades.Coche;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.sql.*;
 
 public class CocheForm extends JFrame {
     private JTextField txtId, txtMarca, txtModelo, txtPlaca, txtAnio, txtColor;
     private JButton btnGuardar, btnEditar, btnEliminar;
     private JTable tabla;
     private DefaultTableModel modelo;
+    private CocheDAO cocheDAO = new CocheDAO();
 
     public CocheForm() {
         setTitle("Gestión de Coches");
@@ -83,9 +84,73 @@ public class CocheForm extends JFrame {
         scroll.setBounds(20, 260, 700, 100);
         add(scroll);
 
-        cargarCoches();
+        // Acciones de los botones
+        btnGuardar.addActionListener(e -> {
+            try {
+                Coche c = new Coche(
+                        0,
+                        txtMarca.getText(),
+                        txtModelo.getText(),
+                        txtPlaca.getText(),
+                        Integer.parseInt(txtAnio.getText()),
+                        txtColor.getText()
+                );
 
-        // Evento para pasar datos a los campos
+                if (cocheDAO.guardar(c)) {
+                    JOptionPane.showMessageDialog(this, "Coche guardado correctamente");
+                    cargarCoches();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Error al guardar coche");
+                }
+
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Datos inválidos: " + ex.getMessage());
+            }
+        });
+
+        btnEditar.addActionListener(e -> {
+            try {
+                Coche c = new Coche(
+                        Integer.parseInt(txtId.getText()),
+                        txtMarca.getText(),
+                        txtModelo.getText(),
+                        txtPlaca.getText(),
+                        Integer.parseInt(txtAnio.getText()),
+                        txtColor.getText()
+                );
+
+                if (cocheDAO.editar(c)) {
+                    JOptionPane.showMessageDialog(this, "Coche actualizado correctamente");
+                    cargarCoches();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Error al actualizar coche");
+                }
+
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Datos inválidos: " + ex.getMessage());
+            }
+        });
+
+        btnEliminar.addActionListener(e -> {
+            try {
+                int id = Integer.parseInt(txtId.getText());
+
+                int confirm = JOptionPane.showConfirmDialog(this, "¿Estás seguro de eliminar?", "Confirmar", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    if (cocheDAO.eliminar(id)) {
+                        JOptionPane.showMessageDialog(this, "Coche eliminado correctamente");
+                        cargarCoches();
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Error al eliminar coche");
+                    }
+                }
+
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "ID inválido: " + ex.getMessage());
+            }
+        });
+
+        // Evento al seleccionar fila
         tabla.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
             public void valueChanged(ListSelectionEvent e) {
                 if (!e.getValueIsAdjusting() && tabla.getSelectedRow() != -1) {
@@ -100,30 +165,21 @@ public class CocheForm extends JFrame {
             }
         });
 
+        cargarCoches();
         setVisible(true);
     }
 
     private void cargarCoches() {
-        modelo.setRowCount(0); // Limpiar tabla
-
-        try (Connection con = Conexion.getConnection()) {
-            String sql = "SELECT * FROM Coche";
-            PreparedStatement ps = con.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                int id = rs.getInt("IdCoche");
-                String marca = rs.getString("Marca");
-                String modeloCoche = rs.getString("Modelo");
-                String placa = rs.getString("Placa");
-                int anio = rs.getInt("Año");
-                String color = rs.getString("Color");
-
-                modelo.addRow(new Object[]{id, marca, modeloCoche, placa, anio, color});
-            }
-
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Error al cargar coches: " + e.getMessage());
+        modelo.setRowCount(0);
+        for (Coche c : cocheDAO.listar()) {
+            modelo.addRow(new Object[]{
+                    c.getIdCoche(),
+                    c.getMarca(),
+                    c.getModelo(),
+                    c.getPlaca(),
+                    c.getAño(),
+                    c.getColor()
+            });
         }
     }
 }
