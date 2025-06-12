@@ -1,8 +1,13 @@
 package PresentacionSwing;
 
+import AccesoDatos.Conexion;
+
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.sql.*;
 
 public class CocheForm extends JFrame {
     private JTextField txtId, txtMarca, txtModelo, txtPlaca, txtAnio, txtColor;
@@ -78,6 +83,47 @@ public class CocheForm extends JFrame {
         scroll.setBounds(20, 260, 700, 100);
         add(scroll);
 
+        cargarCoches();
+
+        // Evento para pasar datos a los campos
+        tabla.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+            public void valueChanged(ListSelectionEvent e) {
+                if (!e.getValueIsAdjusting() && tabla.getSelectedRow() != -1) {
+                    int fila = tabla.getSelectedRow();
+                    txtId.setText(tabla.getValueAt(fila, 0).toString());
+                    txtMarca.setText(tabla.getValueAt(fila, 1).toString());
+                    txtModelo.setText(tabla.getValueAt(fila, 2).toString());
+                    txtPlaca.setText(tabla.getValueAt(fila, 3).toString());
+                    txtAnio.setText(tabla.getValueAt(fila, 4).toString());
+                    txtColor.setText(tabla.getValueAt(fila, 5).toString());
+                }
+            }
+        });
+
         setVisible(true);
+    }
+
+    private void cargarCoches() {
+        modelo.setRowCount(0); // Limpiar tabla
+
+        try (Connection con = Conexion.getConnection()) {
+            String sql = "SELECT * FROM Coche";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                int id = rs.getInt("IdCoche");
+                String marca = rs.getString("Marca");
+                String modeloCoche = rs.getString("Modelo");
+                String placa = rs.getString("Placa");
+                int anio = rs.getInt("Año");
+                String color = rs.getString("Color");
+
+                modelo.addRow(new Object[]{id, marca, modeloCoche, placa, anio, color});
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar coches: " + e.getMessage());
+        }
     }
 }

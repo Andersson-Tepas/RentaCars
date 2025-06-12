@@ -1,8 +1,11 @@
 package PresentacionSwing;
 
+import AccesoDatos.Conexion;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.sql.*;
 
 public class UsuarioForm extends JFrame {
     private JTextField txtId, txtNombre, txtCorreo, txtContrasena, txtEstado;
@@ -71,6 +74,32 @@ public class UsuarioForm extends JFrame {
         scroll.setBounds(20, 220, 650, 120);
         add(scroll);
 
+        // Cargar registros al iniciar
+        cargarUsuarios();
+
         setVisible(true);
+    }
+
+    private void cargarUsuarios() {
+        modelo.setRowCount(0); // Limpiar tabla
+
+        try (Connection con = Conexion.getConnection()) {
+            String sql = "SELECT * FROM Usuarios";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                int id = rs.getInt("IdUsuario");
+                String nombre = rs.getString("Nombre");
+                String correo = rs.getString("Correo");
+                String contrasena = rs.getString("ContrasenaHash");
+                int estado = rs.getInt("Estado");
+
+                modelo.addRow(new Object[]{id, nombre, correo, contrasena, estado});
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar usuarios: " + e.getMessage());
+        }
     }
 }

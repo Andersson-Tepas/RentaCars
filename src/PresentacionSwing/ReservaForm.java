@@ -1,8 +1,11 @@
 package PresentacionSwing;
 
+import AccesoDatos.Conexion;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.sql.*;
 
 public class ReservaForm extends JFrame {
     private JTextField txtId, txtIdCliente, txtIdCoche, txtFechaInicio, txtFechaFin, txtEstado;
@@ -80,6 +83,33 @@ public class ReservaForm extends JFrame {
         scroll.setBounds(20, 260, 740, 100);
         add(scroll);
 
+        // Cargar reservas reales desde la base
+        cargarReservas();
+
         setVisible(true);
+    }
+
+    private void cargarReservas() {
+        modelo.setRowCount(0); // Limpiar tabla
+
+        try (Connection con = Conexion.getConnection()) {
+            String sql = "SELECT * FROM Reserva";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                int id = rs.getInt("IdReserva");
+                int idCliente = rs.getInt("IdCliente");
+                int idCoche = rs.getInt("IdCoche");
+                Date fechaInicio = rs.getDate("FechaInicio");
+                Date fechaFin = rs.getDate("FechaFin");
+                int estado = rs.getInt("Estado");
+
+                modelo.addRow(new Object[]{id, idCliente, idCoche, fechaInicio, fechaFin, estado});
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar reservas: " + e.getMessage());
+        }
     }
 }

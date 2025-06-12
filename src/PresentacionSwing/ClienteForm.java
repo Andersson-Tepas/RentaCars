@@ -1,8 +1,13 @@
 package PresentacionSwing;
 
+import AccesoDatos.Conexion;
+
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.sql.*;
 
 public class ClienteForm extends JFrame {
     private JTextField txtId, txtNombre, txtCorreo, txtTelefono, txtDUI, txtDireccion, txtIdUsuario;
@@ -85,6 +90,49 @@ public class ClienteForm extends JFrame {
         scroll.setBounds(20, 300, 740, 100);
         add(scroll);
 
+        cargarClientes();
+
+        // Mostrar datos al seleccionar una fila
+        tabla.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+            public void valueChanged(ListSelectionEvent e) {
+                if (!e.getValueIsAdjusting() && tabla.getSelectedRow() != -1) {
+                    int fila = tabla.getSelectedRow();
+                    txtId.setText(tabla.getValueAt(fila, 0).toString());
+                    txtNombre.setText(tabla.getValueAt(fila, 1).toString());
+                    txtCorreo.setText(tabla.getValueAt(fila, 2).toString());
+                    txtTelefono.setText(tabla.getValueAt(fila, 3).toString());
+                    txtDUI.setText(tabla.getValueAt(fila, 4).toString());
+                    txtDireccion.setText(tabla.getValueAt(fila, 5).toString());
+                    txtIdUsuario.setText(tabla.getValueAt(fila, 6).toString());
+                }
+            }
+        });
+
         setVisible(true);
+    }
+
+    private void cargarClientes() {
+        modelo.setRowCount(0); // Limpiar tabla
+
+        try (Connection con = Conexion.getConnection()) {
+            String sql = "SELECT * FROM Cliente";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                modelo.addRow(new Object[]{
+                        rs.getInt("IdCliente"),
+                        rs.getString("Nombre"),
+                        rs.getString("Correo"),
+                        rs.getString("Telefono"),
+                        rs.getString("DUI"),
+                        rs.getString("Direccion"),
+                        rs.getInt("IdUsuario")
+                });
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar clientes: " + e.getMessage());
+        }
     }
 }
